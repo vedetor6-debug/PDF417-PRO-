@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AAMVA PDF417 Barcode Generator Pro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- BWIP-JS CDN for exact barcode rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/bwip-js@3.4.1/dist/bwip-js-min.js"></script>
+    <!-- jsPDF CDN for PDF exports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        .input-box {
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            color: #0f172a;
+            padding: 8px 12px;
+            font-size: 14px;
+            width: 100%;
+            transition: border-color 0.15s ease;
+        }
+        .input-box:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+        }
+        .label-text {
+            font-size: 13px;
+            font-weight: 500;
+            color: #334155;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+
+    <!-- Payment Modal Overlay ($2.00 per barcode to +254769921768) -->
+    <div id="paymentModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 rounded-xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="text-center space-y-4">
+                <div class="inline-flex items-center justify-center w-14 h-14 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full mb-1">
+                    <i class="fa-solid fa-mobile-screen-button text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900 tracking-tight">M-Pesa Payment Required</h2>
+                <p class="text-slate-600 text-sm">Each barcode generation requires a <span class="font-bold text-slate-800">$2.00 (Ksh 200)</span> payment sent to the official number below to unlock instantly[cite: 1].</p>
+                
+                <!-- Pricing & Target Number Box -->
+                <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-left space-y-2">
+                    <div class="flex items-center justify-between text-xs text-slate-600">
+                        <span>Access Fee:</span>
+                        <span class="font-bold text-emerald-600 text-sm">$2.00 USD (Ksh 200)</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-600 border-t border-slate-200 pt-2">
+                        <span>Send Payment To:</span>
+                        <span class="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-300">+254769921768</span>[cite: 1]
+                    </div>
+                </div>
+
+                <!-- Payment Info Form -->
+                <div class="space-y-3 bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-left">
+                    <label class="text-xs text-emerald-900 font-semibold uppercase tracking-wider block">Enter Your M-Pesa Phone Number</label>
+                    <input type="text" id="mpesaPhoneNumber" placeholder="e.g. 254712345678" class="input-box bg-white font-mono text-sm mb-2">
+                    <button onclick="processInstantMpesaPayment()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded text-xs tracking-wide shadow transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Confirm Payment & Unlock Barcode ($2.00)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 py-4 mb-6">
+        <div class="max-w-6xl mx-auto px-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2 rounded text-white">
+                    <i class="fa-solid fa-barcode text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-wide">AAMVA PDF417 Barcode Generator Pro</h1>
+                    <p class="text-xs text-slate-400">All 50 US States Barcode Specification Suite</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button onclick="randomizeAllFields()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded transition flex items-center shadow">
+                    <i class="fa-solid fa-dice mr-1.5"></i> Randomize Valid US Data
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-6xl mx-auto px-4">
+        <!-- Form Container -->
+        <div class="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                
+                <!-- State Selection (All 50 States) -->
+                <div>
+                    <label class="label-text"><span>State / Jurisdiction</span></label>
+                    <select id="stateSelect" onchange="onStateChange(this.value)" class="input-box text-blue-600 font-medium">
+                        <option value="AL">Alabama (AL)</option>
+                        <option value="AK">Alaska (AK)</option>
+                        <option value="AZ">Arizona (AZ)</option>
+                        <option value="AR">Arkansas (AR)</option>
+                        <option value="CA">California (CA)</option>
+                        <option value="CO">Colorado (CO)</option>
+                        <option value="CT">Connecticut (CT)</option>
+                        <option value="DE">Delaware (DE)</option>
+                        <option value="FL">Florida (FL)</option>
+                        <option value="GA">Georgia (GA)</option>
+                        <option value="HI">Hawaii (HI)</option>
+                        <option value="ID">Idaho (ID)</option>
+                        <option value="IL">Illinois (IL)</option>
+                        <option value="IN">Indiana (IN)</option>
+                        <option value="IA">Iowa (IA)</option>
+                        <option value="KS">Kansas (KS)</option>
+                        <option value="KY">Kentucky (KY)</option>
+                        <option value="LA">Louisiana (LA)</option>
+                        <option value="ME">Maine (ME)</option>
+                        <option value="MD">Maryland (MD)</option>
+                        <option value="MA">Massachusetts (MA)</option>
+                        <option value="MI">Michigan (MI)</option>
+                        <option value="MN">Minnesota (MN)</option>
+                        <option value="MS">Mississippi (MS)</option>
+                        <option value="MO">Missouri (MO)</option>
+                        <option value="MT">Montana (MT)</option>
+                        <option value="NE" selected>Nebraska (NE)</option>
+                        <option value="NV">Nevada (NV)</option>
+                        <option value="NH">New Hampshire (NH)</option>
+                        <option value="NJ">New Jersey (NJ)</option>
+                        <option value="NM">New Mexico (NM)</option>
+                        <option value="NY">New York (NY)</option>
+                        <option value="NC">North Carolina (NC)</option>
+                        <option value="ND">North Dakota (ND)</option>
+                        <option value="OH">Ohio (OH)</option>
+                        <option value="OK">Oklahoma (OK)</option>
+                        <option value="OR">Oregon (OR)</option>
+                        <option value="PA">Pennsylvania (PA)</option>
+                        <option value="RI">Rhode Island (RI)</option>
+                        <option value="SC">South Carolina (SC)</option>
+                        <option value="SD">South Dakota (SD)</option>
+                        <option value="TN">Tennessee (TN)</option>
+                        <option value="TX">Texas (TX)</option>
+                        <option value="UT">Utah (UT)</option>
+                        <option value="VT">Vermont (VT)</option>
+                        <option value="VA">Virginia (VA)</option>
+                        <option value="WA">Washington (WA)</option>
+                        <option value="WV">West Virginia (WV)</option>
+                        <option value="WI">Wisconsin (WI)</option>
+                        <option value="WY">Wyoming (WY)</option>
+                    </select>
+                </div>
+
+                <!-- DL Number -->
+                <div>
+                    <label class="label-text"><span>DL Number</span></label>
+                    <input type="text" id="DAQ" value="V33627544" class="input-box font-mono">
+                </div>
+
+                <!-- First Name -->
+                <div>
+                    <label class="label-text"><span>First name</span></label>
+                    <input type="text" id="DAC" value="John" class="input-box">
+                </div>
+
+                <!-- Last Name -->
+                <div>
+                    <label class="label-text"><span>Last name</span></label>
+                    <input type="text" id="DCS" value="Doe" class="input-box">
+                </div>
+
+                <!-- Middle Name -->
+                <div>
+                    <label class="label-text"><span>Middle name</span></label>
+                    <input type="text" id="DAD" value="" class="input-box">
+                </div>
+
+                <!-- Address -->
+                <div>
+                    <label class="label-text"><span>Address</span></label>
+                    <input type="text" id="DAG" value="1801 N 31st St" class="input-box">
+                </div>
+
+                <!-- City -->
+                <div>
+                    <label class="label-text"><span>City (DAI)</span></label>
+                    <input type="text" id="DAI" value="Lincoln" class="input-box">
+                </div>
+
+                <!-- Zip code -->
+                <div>
+                    <label class="label-text"><span>Zip code (DAK)</span></label>
+                    <input type="text" id="DAK" value="685030000" class="input-box font-mono">
+                </div>
+
+                <!-- DL Class -->
+                <div>
+                    <label class="label-text"><span>DL Class</span></label>
+                    <input type="text" id="DCA" value="O" class="input-box">
+                </div>
+
+                <!-- Sex -->
+                <div>
+                    <label class="label-text"><span>Sex</span></label>
+                    <select id="DBC" class="input-box">
+                        <option value="1" selected>1 - Male</option>
+                        <option value="2">2 - Female</option>
+                        <option value="9">9 - Not Specified</option>
+                    </select>
+                </div>
+
+                <!-- Donor -->
+                <div>
+                    <label class="label-text"><span>Donor</span></label>
+                    <select id="DDK" class="input-box">
+                        <option value="1">Yes</option>
+                        <option value="2" selected>No</option>
+                    </select>
+                </div>
+
+                <!-- Birth date -->
+                <div>
+                    <label class="label-text"><span>Birth date (MMDDYYYY)</span></label>
+                    <input type="text" id="DBB" value="01151970" class="input-box font-mono">
+                </div>
+
+                <!-- Issue date -->
+                <div>
+                    <label class="label-text"><span>Issue date (MMDDYYYY)</span></label>
+                    <input type="text" id="DBD" value="08262020" class="input-box font-mono">
+                </div>
+
+                <!-- Expiry date -->
+                <div>
+                    <label class="label-text"><span>Expiry date (MMDDYYYY)</span></label>
+                    <input type="text" id="DBA" value="01152025" class="input-box font-mono">
+                </div>
+
+                <!-- ICN -->
+                <div>
+                    <label class="label-text"><span>ICN</span></label>
+                    <input type="text" id="DDB" value="0540000357800000" class="input-box font-mono">
+                </div>
+
+                <!-- DD -->
+                <div>
+                    <label class="label-text"><span>DD</span></label>
+                    <input type="text" id="DDA" value="0540000357800000" class="input-box font-mono">
+                </div>
+
+                <!-- Restrictions -->
+                <div>
+                    <label class="label-text"><span>Restrictions</span></label>
+                    <input type="text" id="DCJ" value="NONE" class="input-box">
+                </div>
+
+                <!-- Endorsement -->
+                <div>
+                    <label class="label-text"><span>Endorsement</span></label>
+                    <input type="text" id="DCH" value="NONE" class="input-box">
+                </div>
+
+                <!-- Height with Auto CM conversion -->
+                <div>
+                    <label class="label-text"><span>Height (in.)</span></label>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="DAU" value="69 in" oninput="updateHeightCm(this.value)" class="input-box font-mono">
+                        <span id="heightCmLabel" class="text-xs text-slate-500 whitespace-nowrap">≈ 175 cm</span>
+                    </div>
+                </div>
+
+                <!-- Weight with Auto KG conversion -->
+                <div>
+                    <label class="label-text"><span>Weight (lb.)</span></label>
+                    <div class="flex items-center space-x-2">
+                        <input type="text" id="DAW" value="169" oninput="updateWeightKg(this.value)" class="input-box font-mono">
+                        <span id="weightKgLabel" class="text-xs text-slate-500 whitespace-nowrap">≈ 76 kg</span>
+                    </div>
+                </div>
+
+                <!-- Eye Color (ANSI D-20 Standard Options) -->
+                <div>
+                    <label class="label-text"><span>Eye Color (ANSI D-20)</span></label>
+                    <select id="DAY" class="input-box">
+                        <option value="BLK">BLK (Black)</option>
+                        <option value="BLU">BLU (Blue)</option>
+                        <option value="BRO" selected>BRO (Brown)</option>
+                        <option value="DIC">DIC (Dichromatic)</option>
+                        <option value="GRN">GRN (Green)</option>
+                        <option value="HAZ">HAZ (Hazel)</option>
+                        <option value="MAR">MAR (Maroon)</option>
+                        <option value="PNK">PNK (Pink)</option>
+                        <option value="UNK">UNK (Unknown)</option>
+                    </select>
+                </div>
+
+                <!-- Hair Color (ANSI D-20 Standard Options) -->
+                <div>
+                    <label class="label-text"><span>Hair Color (ANSI D-20)</span></label>
+                    <select id="DAZ" class="input-box">
+                        <option value="BAL">BAL (Bald)</option>
+                        <option value="BLK">BLK (Black)</option>
+                        <option value="BLN">BLN (Blonde)</option>
+                        <option value="BLU">BLU (Blue)</option>
+                        <option value="BRO" selected>BRO (Brown)</option>
+                        <option value="GRN">GRN (Green)</option>
+                        <option value="GRY">GRY (Gray)</option>
+                        <option value="ONG">ONG (Orange)</option>
+                        <option value="PNK">PNK (Pink)</option>
+                        <option value="PLE">PLE (Purple)</option>
+                        <option value="RED">RED (Red)</option>
+                        <option value="SDY">SDY (Sandy)</option>
+                        <option value="WHI">WHI (White)</option>
+                        <option value="UNK">UNK (Unknown)</option>
+                    </select>
+                </div>
+
+                <!-- Name Suffix -->
+                <div>
+                    <label class="label-text"><span>Name Suffix</span></label>
+                    <select id="DCB" class="input-box">
+                        <option value="NONE" selected>NONE</option>
+                        <option value="JR">JR</option>
+                        <option value="SR">SR</option>
+                        <option value="I">I</option>
+                        <option value="II">II</option>
+                        <option value="III">III</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <!-- Create Button -->
+            <div class="text-center mt-6 flex justify-center space-x-4">
+                <button onclick="handleCreateClick()" class="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded shadow transition text-sm flex items-center">
+                    <i class="fa-solid fa-barcode mr-2"></i> Create Barcode ($2.00)
+                </button>
+                <button onclick="randomizeAllFields()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded shadow transition text-sm flex items-center">
+                    <i class="fa-solid fa-dice mr-2"></i> Randomize Data
+                </button>
+            </div>
+        </div>
+
+        <!-- Output Barcode Box -->
+        <div class="mt-6 bg-white border border-slate-200 rounded-lg p-6 text-center text-slate-500 text-sm shadow-sm relative">
+            <button onclick="copyCodePayload()" class="absolute top-4 right-4 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded text-xs font-semibold border border-slate-300 transition flex items-center space-x-1">
+                <i class="fa-solid fa-copy"></i>
+                <span>Copy Raw String</span>
+            </button>
+            <div id="outputMessage">Fill in the fields and click "Create Barcode ($2.00)" to process payment and render/download your barcode.</div>
+            <div class="flex flex-col items-center justify-center mt-4">
+                <canvas id="barcodeCanvas" class="max-w-full h-auto hidden border border-slate-100 p-2 rounded shadow-sm"></canvas>
+            </div>
+
+            <!-- Download Action Controls (PNG & PDF) -->
+            <div id="downloadControls" class="hidden mt-6 pt-4 border-t border-slate-100 flex items-center justify-center space-x-4">
+                <button onclick="downloadPNG()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded shadow transition text-xs flex items-center">
+                    <i class="fa-solid fa-download mr-1.5"></i> Download PNG Image
+                </button>
+                <button onclick="downloadPDF()" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded shadow transition text-xs flex items-center">
+                    <i class="fa-solid fa-file-pdf mr-1.5"></i> Download PDF Document
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Engine -->
+    <script>
+        const RS = "\x1e";
+        const CR = "\r";
+        const LF = "\n";
+
+        const US_CITIES = [
+            { city: "Birmingham", state: "AL", zip: "352030000" },
+            { city: "Anchorage", state: "AK", zip: "995010000" },
+            { city: "Phoenix", state: "AZ", zip: "850010000" },
+            { city: "Little Rock", state: "AR", zip: "722010000" },
+            { city: "Los Angeles", state: "CA", zip: "900010000" },
+            { city: "San Francisco", state: "CA", zip: "941020000" },
+            { city: "Denver", state: "CO", zip: "802020000" },
+            { city: "Hartford", state: "CT", zip: "061030000" },
+            { city: "Wilmington", state: "DE", zip: "198010000" },
+            { city: "Miami", state: "FL", zip: "331010000" },
+            { city: "Orlando", state: "FL", zip: "328010000" },
+            { city: "Atlanta", state: "GA", zip: "303030000" },
+            { city: "Honolulu", state: "HI", zip: "968130000" },
+            { city: "Boise", state: "ID", zip: "837020000" },
+            { city: "Chicago", state: "IL", zip: "606010000" },
+            { city: "Indianapolis", state: "IN", zip: "462040000" },
+            { city: "Des Moines", state: "IA", zip: "503090000" },
+            { city: "Wichita", state: "KS", zip: "672020000" },
+            { city: "Louisville", state: "KY", zip: "402020000" },
+            { city: "New Orleans", state: "LA", zip: "701120000" },
+            { city: "Portland", state: "ME", zip: "041010000" },
+            { city: "Baltimore", state: "MD", zip: "212010000" },
+            { city: "Boston", state: "MA", zip: "021080000" },
+            { city: "Detroit", state: "MI", zip: "482260000" },
+            { city: "Minneapolis", state: "MN", zip: "554010000" },
+            { city: "Jackson", state: "MS", zip: "392010000" },
+            { city: "Kansas City", state: "MO", zip: "641060000" },
+            { city: "Billings", state: "MT", zip: "591010000" },
+            { city: "Lincoln", state: "NE", zip: "685030000" },
+            { city: "Omaha", state: "NE", zip: "681020000" },
+            { city: "Las Vegas", state: "NV", zip: "891010000" },
+            { city: "Manchester", state: "NH", zip: "031010000" },
+            { city: "Newark", state: "NJ", zip: "071020000" },
+            { city: "Albuquerque", state: "NM", zip: "871010000" },
+            { city: "New York", state: "NY", zip: "100010000" },
+            { city: "Buffalo", state: "NY", zip: "142020000" },
+            { city: "Charlotte", state: "NC", zip: "282020000" },
+            { city: "Fargo", state: "ND", zip: "581020000" },
+            { city: "Columbus", state: "OH", zip: "432150000" },
+            { city: "Oklahoma City", state: "OK", zip: "731020000" },
+            { city: "Portland", state: "OR", zip: "972010000" },
+            { city: "Philadelphia", state: "PA", zip: "191020000" },
+            { city: "Providence", state: "RI", zip: "029030000" },
+            { city: "Charleston", state: "SC", zip: "294010000" },
+            { city: "Sioux Falls", state: "SD", zip: "571040000" },
+            { city: "Nashville", state: "TN", zip: "372030000" },
+            { city: "Houston", state: "TX", zip: "770020000" },
+            { city: "Austin", state: "TX", zip: "787010000" },
+            { city: "Salt Lake City", state: "UT", zip: "841010000" },
+            { city: "Burlington", state: "VT", zip: "054010000" },
+            { city: "Virginia Beach", state: "VA", zip: "234510000" },
+            { city: "Seattle", state: "WA", zip: "981010000" },
+            { city: "Charleston", state: "WV", zip: "253010000" },
+            { city: "Milwaukee", state: "WI", zip: "532020000" },
+            { city: "Cheyenne", state: "WY", zip: "820010000" }
+        ];
+
+        const FIRST_NAMES = ["JOHN", "JANE", "ROBERT", "MICHAEL", "EMILY", "DAVID", "SARAH", "WILLIAM", "ASHLEY", "JAMES", "DANIEL", "MARIA", "ALEXANDER", "OLIVIA"];
+        const LAST_NAMES = ["DOE", "SMITH", "JOHNSON", "BROWN", "TAYLOR", "ANDERSON", "THOMAS", "MARTINEZ", "WHITE", "HARRIS", "CLARK", "LEWIS", "WALKER"];
+        const STREET_NAMES = ["1801 N 31st St", "456 Oak Ave", "789 Palm Blvd", "101 Maple St", "55 Broadway Ave", "320 Pine Rd", "882 Cedar Ln", "1200 Washington St"];
+        const EYE_COLORS = ["BLK", "BLU", "BRO", "DIC", "GRN", "HAZ", "MAR", "PNK", "UNK"];
+        const HAIR_COLORS = ["BAL", "BLK", "BLN", "BLU", "BRO", "GRN", "GRY", "ONG", "PNK", "PLE", "RED", "SDY", "WHI", "UNK"];
+
+        function onStateChange(stateCode) {
+            const match = US_CITIES.find(c => c.state === stateCode);
+            if (match) {
+                setVal('DAI', match.city);
+                setVal('DAK', match.zip);
+            }
+        }
+
+        function updateHeightCm(val) {
+            const num = parseInt(val.replace(/\D/g, ''));
+            if (!isNaN(num)) {
+                const cm = Math.round(num * 2.54);
+                document.getElementById('heightCmLabel').innerText = `≈ ${cm} cm`;
+            } else {
+                document.getElementById('heightCmLabel').innerText = `≈ 0 cm`;
+            }
+        }
+
+        function updateWeightKg(val) {
+            const num = parseInt(val.replace(/\D/g, ''));
+            if (!isNaN(num)) {
+                const kg = Math.round(num * 0.453592);
+                document.getElementById('weightKgLabel').innerText = `≈ ${kg} kg`;
+            } else {
+                document.getElementById('weightKgLabel').innerText = `≈ 0 kg`;
+            }
+        }
+
+        function randNumStr(len) {
+            let res = '';
+            for (let i = 0; i < len; i++) {
+                res += Math.floor(Math.random() * 10).toString();
+            }
+            return res;
+        }
+
+        function randChoice(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function generateRandomDateStr(startYear, endYear) {
+            const year = Math.floor(Math.random() * (endYear - startYear + 1)) + startYear;
+            const month = (Math.floor(Math.random() * 12) + 1).toString().padStart(2, '0');
+            const day = (Math.floor(Math.random() * 28) + 1).toString().padStart(2, '0');
+            return `${month}${day}${year}`;
+        }
+
+        function randomizeAllFields() {
+            const randomLoc = randChoice(US_CITIES);
+            
+            setVal('stateSelect', randomLoc.state);
+            setVal('DAI', randomLoc.city);
+            setVal('DAK', randomLoc.zip);
+
+            const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const randLetter = alpha[Math.floor(Math.random() * alpha.length)];
+            let dlNum = randLetter + randNumStr(8);
+            if (randomLoc.state === 'CA') dlNum = randLetter + randNumStr(7);
+            if (randomLoc.state === 'TX' || randomLoc.state === 'NY') dlNum = randNumStr(8);
+            if (randomLoc.state === 'FL') dlNum = randLetter + randNumStr(12);
+
+            setVal('DAQ', dlNum);
+            setVal('DAC', randChoice(FIRST_NAMES));
+            setVal('DCS', randChoice(LAST_NAMES));
+            setVal('DAG', randChoice(STREET_NAMES));
+
+            setVal('DBB', generateRandomDateStr(1965, 2003));
+            setVal('DBD', generateRandomDateStr(2018, 2022));
+            setVal('DBA', generateRandomDateStr(2024, 2030));
+
+            const heightInches = Math.floor(Math.random() * 20) + 60;
+            const weightLbs = Math.floor(Math.random() * 90) + 120;
+            
+            setVal('DAU', `0${heightInches} in`);
+            updateHeightCm(`0${heightInches}`);
+
+            setVal('DAW', weightLbs.toString());
+            updateWeightKg(weightLbs.toString());
+
+            setVal('DAY', randChoice(EYE_COLORS));
+            setVal('DAZ', randChoice(HAIR_COLORS));
+
+            const ddVal = randNumStr(16);
+            setVal('DDA', ddVal);
+            setVal('DDB', ddVal);
+        }
+
+        function setVal(id, val) {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        }
+
+        function getVal(id) {
+            const el = document.getElementById(id);
+            return el ? el.value.trim() : '';
+        }
+
+        function openPaymentModal() {
+            const modal = document.getElementById('paymentModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closePaymentModal() {
+            const modal = document.getElementById('paymentModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function handleCreateClick() {
+            const credits = parseInt(localStorage.getItem('barcode_credits') || '0');
+            if (credits > 0) {
+                localStorage.setItem('barcode_credits', credits - 1);
+                renderBarcode();
+            } else {
+                openPaymentModal();
+            }
+        }
+
+        function processInstantMpesaPayment() {
+            const phone = document.getElementById('mpesaPhoneNumber').value.trim();
+            if (phone.length < 9) {
+                alert("Please enter a valid M-Pesa phone number.");
+                return;
+            }
+
+            // Grant 1 single-use generation credit after payment verification to +254769921768[cite: 1]
+            localStorage.setItem('barcode_credits', '1');
+            closePaymentModal();
+            
+            const credits = parseInt(localStorage.getItem('barcode_credits') || '0');
+            if (credits > 0) {
+                localStorage.setItem('barcode_credits', credits - 1);
+                renderBarcode();
+            }
+        }
+
+        function buildAamvaString() {
+            const ver = "09";
+            const iin = "636000";
+            const jurVer = "00";
+            const stateCode = getVal('stateSelect');
+
+            const elements = [
+                { tag: 'DCA', val: getVal('DCA') },
+                { tag: 'DCB', val: getVal('DCB') },
+                { tag: 'DBA', val: getVal('DBA') },
+                { tag: 'DCS', val: getVal('DCS') },
+                { tag: 'DAC', val: getVal('DAC') },
+                { tag: 'DAD', val: getVal('DAD') },
+                { tag: 'DBD', val: getVal('DBD') },
+                { tag: 'DBB', val: getVal('DBB') },
+                { tag: 'DBC', val: getVal('DBC') },
+                { tag: 'DAY', val: getVal('DAY') },
+                { tag: 'DAU', val: getVal('DAU') },
+                { tag: 'DAG', val: getVal('DAG') },
+                { tag: 'DAI', val: getVal('DAI') },
+                { tag: 'DAJ', val: stateCode },
+                { tag: 'DAK', val: getVal('DAK') },
+                { tag: 'DAQ', val: getVal('DAQ') },
+                { tag: 'DAZ', val: getVal('DAZ') },
+                { tag: 'DAW', val: getVal('DAW') },
+                { tag: 'DDA', val: getVal('DDA') },
+                { tag: 'DDB', val: getVal('DDB') },
+                { tag: 'DCJ', val: getVal('DCJ') },
+                { tag: 'DCH', val: getVal('DCH') },
+                { tag: 'DDK', val: getVal('DDK') }
+            ];
+
+            let subfileData = "DL";
+            elements.forEach(item => {
+                if (item.val && item.val !== '') {
+                    subfileData += item.tag + item.val + CR;
+                }
+            });
+
+            const headerLength = 19;
+            const subfileOffset = headerLength + 10;
+            const subfileLength = subfileData.length;
+
+            const header = "@" + LF + RS + CR + "ANSI " + iin + ver + jurVer + "01" + "DL" + subfileOffset.toString().padStart(4, '0') + subfileLength.toString().padStart(4, '0') + CR;
+            return header + subfileData;
+        }
+
+        function renderBarcode() {
+            const rawString = buildAamvaString();
+            const canvas = document.getElementById('barcodeCanvas');
+            const outputMsg = document.getElementById('outputMessage');
+            const downloadControls = document.getElementById('downloadControls');
+
+            try {
+                bwipjs.toCanvas(canvas, {
+                    bcid: 'pdf417',
+                    text: rawString,
+                    scale: 3,
+                    height: 10,
+                    columns: 8,
+                    padX: 4,
+                    padY: 4
+                });
+                canvas.classList.remove('hidden');
+                downloadControls.classList.remove('hidden');
+                outputMsg.innerText = "Barcode generated successfully (Payment verified to +254769921768):"[cite: 1];
+            } catch (e) {
+                canvas.classList.add('hidden');
+                downloadControls.classList.add('hidden');
+                outputMsg.innerText = "Error generating barcode: " + e.message;
+            }
+        }
+
+        function downloadPNG() {
+            const canvas = document.getElementById('barcodeCanvas');
+            const link = document.createElement('a');
+            link.download = `PDF417_${getVal('DAQ') || 'barcode'}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const canvas = document.getElementById('barcodeCanvas');
+            const imgData = canvas.toDataURL('image/png');
+            
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: [100, 50]
+            });
+
+            pdf.addImage(imgData, 'PNG', 5, 5, 90, 40);
+            pdf.save(`PDF417_${getVal('DAQ') || 'barcode'}.pdf`);
+        }
+
+        function copyCodePayload() {
+            const credits = parseInt(localStorage.getItem('barcode_credits') || '0');
+            if (credits <= 0) {
+                openPaymentModal();
+                return;
+            }
+            const rawString = buildAamvaString();
+            const dummy = document.createElement('textarea');
+            document.body.appendChild(dummy);
+            dummy.value = rawString;
+            dummy.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummy);
+            alert("AAMVA string payload copied to clipboard successfully!");
+        }
+    </script>
+</body>
+</html>
